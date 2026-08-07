@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Raspberry Pi Dashboard</title>
+    <style>
+        :root {
+            color-scheme: dark;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+
+        header {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 20px;
+            border-bottom: 1px solid #1f2937;
+            background: #111827;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 22px;
+        }
+
+        .header-right {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            color: #94a3b8;
+            font-size: 14px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            padding: 16px;
+        }
+
+        .card {
+            background: #111827;
+            border: 1px solid #1f2937;
+            border-radius: 16px;
+            padding: 16px;
+            min-height: 120px;
+        }
+
+        .small {
+            color: #94a3b8;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .value {
+            font-size: 28px;
+            font-weight: 700;
+            word-break: break-word;
+        }
+
+        .sub {
+            margin-top: 8px;
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
+        .bar {
+            height: 14px;
+            background: #1f2937;
+            border-radius: 999px;
+            overflow: hidden;
+            margin-top: 12px;
+        }
+
+        .bar-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 999px;
+            transition: width 0.5s ease;
+        }
+
+        .good {
+            background: #22c55e;
+        }
+
+        .warn {
+            background: #f59e0b;
+        }
+
+        .bad {
+            background: #ef4444;
+        }
+
+        .info {
+            background: #38bdf8;
+        }
+
+        .status-ok {
+            color: #22c55e;
+            font-weight: 700;
+        }
+
+        .status-bad {
+            color: #ef4444;
+            font-weight: 700;
+        }
+
+        .kv {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .kv div:first-child {
+            color: #94a3b8;
+        }
+
+        #cpu-cores {
+            display: grid;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        .core {
+            display: grid;
+            grid-template-columns: 60px 1fr 45px;
+            gap: 10px;
+            align-items: center;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        .core .bar {
+            height: 8px;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>Raspberry Pi Dashboard</h1>
+            <div class="small" id="hostname">--</div>
+        </div>
+
+        <div class="header-right">
+            <span id="status" class="status-ok">connecting...</span>
+            <span id="updated">--</span>
+        </div>
+    </header>
+
+    <div class="grid">
+        <div class="card">
+            <div class="small">CPU Temperature</div>
+            <div class="value" id="temp-value">--</div>
+            <div class="bar">
+                <div class="bar-fill info" id="temp-bar"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="small">CPU Usage</div>
+            <div class="value" id="cpu-value">--</div>
+            <div class="bar">
+                <div class="bar-fill info" id="cpu-bar"></div>
+            </div>
+            <div id="cpu-cores"></div>
+        </div>
+
+        <div class="card">
+            <div class="small">Memory</div>
+            <div class="value" id="mem-value">--</div>
+            <div class="bar">
+                <div class="bar-fill info" id="mem-bar"></div>
+            </div>
+            <div class="sub" id="mem-detail">--</div>
+        </div>
+
+        <div class="card">
+            <div class="small">Disk /</div>
+            <div class="value" id="disk-value">--</div>
+            <div class="bar">
+                <div class="bar-fill info" id="disk-bar"></div>
+            </div>
+            <div class="sub" id="disk-detail">--</div>
+        </div>
+
+        <div class="card">
+            <div class="small">System</div>
+            <div class="kv">
+                <div>Load average</div>
+                <div id="load-value">--</div>
+
+                <div>Uptime</div>
+                <div id="uptime-value">--</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="small">Raspberry Pi Details</div>
+            <div class="kv">
+                <div>ARM clock</div>
+                <div id="arm-clock">--</div>
+
+                <div>Core clock</div>
+                <div id="core-clock">--</div>
+
+                <div>Memory split</div>
+                <div id="mem-split">--</div>
+
+                <div>Throttling</div>
+                <div id="throttle-value">--</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="small">Network</div>
+            <div class="kv">
+                <div>RX</div>
+                <div id="net-rx">--</div>
+
+                <div>TX</div>
+                <div id="net-tx">--</div>
+
+                <div>Total</div>
+                <div id="net-total">--</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const $ = id => document.getElementById(id);
+
+        function setText(id, text) {
+            const el = $(id);
+            if (el) el.textContent = text;
+        }
+
+        function setBar(id, percent, className) {
+            const el = $(id);
+            if (!el) return;
+
+            let p = Number(percent);
+            if (!Number.isFinite(p)) p = 0;
+
+            p = Math.max(0, Math.min(100, p));
+            el.style.width = p + "%";
+            el.className = "bar-fill " + className;
+        }
+
+        function tempClass(temp) {
+            if (temp === null || temp === undefined) return "info";
+            if (temp < 55) return "good";
+            if (temp < 70) return "warn";
+            return "bad";
+        }
+
+        function usageClass(percent) {
+            if (percent < 70) return "good";
+            if (percent < 90) return "warn";
+            return "bad";
+        }
+
+        function formatBytes(bytes, decimals = 1) {
+            if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+
+            const k = 1024;
+            const sizes = ["B", "KiB", "MiB", "GiB", "TiB"];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+            return (bytes / Math.pow(k, i)).toFixed(decimals) + " " + sizes[i];
+        }
+
+        function formatUptime(seconds) {
+            if (!Number.isFinite(seconds)) return "--";
+
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+
+            return (
+                days + "d " +
+                String(hours).padStart(2, "0") + ":" +
+                String(minutes).padStart(2, "0") + ":" +
+                String(secs).padStart(2, "0")
+            );
+        }
+
+        function updateCores(perCore) {
+            const container = $("cpu-cores");
+            if (!container || !Array.isArray(perCore)) return;
+
+            if (container.children.length !== perCore.length) {
+                container.innerHTML = "";
+
+                perCore.forEach((_, i) => {
+                    const div = document.createElement("div");
+                    div.className = "core";
+                    div.innerHTML = `
+                        <span>Core ${i}</span>
+                        <div class="bar">
+                            <div class="bar-fill info" id="core-bar-${i}"></div>
+                        </div>
+                        <span id="core-val-${i}">0%</span>
+                    `;
+                    container.appendChild(div);
+                });
+            }
+
+            perCore.forEach((value, i) => {
+                setBar(`core-bar-${i}`, value, usageClass(value));
+                setText(`core-val-${i}`, Math.round(value) + "%");
+            });
+        }
+
+        function setStatus(ok) {
+            const el = $("status");
+            if (!el) return;
+
+            if (ok) {
+                el.textContent = "online";
+                el.className = "status-ok";
+            } else {
+                el.textContent = "offline";
+                el.className = "status-bad";
+            }
+        }
+
+        async function refresh() {
+            try {
+                const res = await fetch("/api/stats", { cache: "no-store" });
+                const d = await res.json();
+
+                setText("hostname", d.hostname);
+                setText("updated", d.time);
+
+                setText(
+                    "temp-value",
+                    d.temp === null ? "N/A" : d.temp.toFixed(1) + " °C"
+                );
+
+                setBar(
+                    "temp-bar",
+                    d.temp === null ? 0 : Math.min(100, (d.temp / 85) * 100),
+                    tempClass(d.temp)
+                );
+
+                setText("cpu-value", d.cpu.toFixed(0) + "%");
+                setBar("cpu-bar", d.cpu, usageClass(d.cpu));
+                updateCores(d.cpu_per_core || []);
+
+                setText("mem-value", d.memory.percent.toFixed(0) + "%");
+                setBar("mem-bar", d.memory.percent, usageClass(d.memory.percent));
+                setText(
+                    "mem-detail",
+                    formatBytes(d.memory.used) + " used / " +
+                    formatBytes(d.memory.total) + " total"
+                );
+
+                setText("disk-value", d.disk.percent.toFixed(0) + "%");
+                setBar("disk-bar", d.disk.percent, usageClass(d.disk.percent));
+                setText(
+                    "disk-detail",
+                    formatBytes(d.disk.used) + " used / " +
+                    formatBytes(d.disk.total) + " total"
+                );
+
+                setText(
+                    "load-value",
+                    d.load.map(x => x.toFixed(2)).join(", ")
+                );
+
+                setText("uptime-value", formatUptime(d.uptime));
+
+                setText(
+                    "arm-clock",
+                    d.clocks.arm === null ? "N/A" : Math.round(d.clocks.arm) + " MHz"
+                );
+
+                setText(
+                    "core-clock",
+                    d.clocks.core === null ? "N/A" : Math.round(d.clocks.core) + " MHz"
+                );
+
+                setText(
+                    "mem-split",
+                    (d.memory_split.arm || "?") + " CPU / " +
+                    (d.memory_split.gpu || "?") + " GPU"
+                );
+
+                const th = d.throttling;
+                const thEl = $("throttle-value");
+
+                if (th.ok) {
+                    thEl.textContent = "OK";
+                    thEl.className = "status-ok";
+                } else {
+                    thEl.textContent = th.issues.join(", ") || th.raw;
+                    thEl.className = "status-bad";
+                }
+
+                setText("net-rx", formatBytes(d.network.rx_rate) + "/s");
+                setText("net-tx", formatBytes(d.network.tx_rate) + "/s");
+                setText(
+                    "net-total",
+                    "RX " + formatBytes(d.network.rx_total) +
+                    " / TX " + formatBytes(d.network.tx_total)
+                );
+
+                setStatus(true);
+            } catch (err) {
+                setStatus(false);
+            }
+        }
+
+        refresh();
+        setInterval(refresh, 1000);
+    </script>
+</body>
+</html>
