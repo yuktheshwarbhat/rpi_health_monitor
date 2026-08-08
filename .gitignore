@@ -6,6 +6,7 @@ virtualenv/
 
 # Python cache
 __pycache__/
+history.db
 *.pyc
 *.pyo
 *.pyd
